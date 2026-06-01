@@ -1,10 +1,8 @@
--- qa0e System v1.7 - Premium Glass UI (English)
+-- // qa0e System v1.8 - Premium Glass UI (English)
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
-local CoreGui = game:GetService("CoreGui")
 local SoundService = game:GetService("SoundService")
-
 local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 
@@ -15,9 +13,11 @@ local espEnabled = false
 local snaplinesEnabled = false
 local infinityJumpEnabled = false
 local speedHackEnabled = false
-local speedValue = 16
+local speedValue = 32
 local savedTeleportPoint = nil
-local currentVolume = 0.5
+local currentVolume = 1.0
+
+local connections = {}
 
 -- Click Sound
 local clickSound = Instance.new("Sound")
@@ -30,27 +30,27 @@ local function playClick()
 end
 
 local function updateVolume(newVol)
-    currentVolume = math.clamp(newVol, 0, 2)
+    currentVolume = math.clamp(newVol, 0, 3)
     clickSound.Volume = currentVolume
 end
 
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "qa0eSystem"
 screenGui.ResetOnSpawn = false
-screenGui.Parent = CoreGui
+screenGui.Parent = game:GetService("CoreGui")
 
 -- ==================== KEY SYSTEM ====================
 local keyFrame = Instance.new("Frame")
-keyFrame.Size = UDim2.new(0, 380, 0, 240)
-keyFrame.Position = UDim2.new(0.5, -190, 0.5, -120)
+keyFrame.Size = UDim2.new(0, 400, 0, 260)
+keyFrame.Position = UDim2.new(0.5, -200, 0.5, -130)
 keyFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 28)
-keyFrame.BackgroundTransparency = 0.15
+keyFrame.BackgroundTransparency = 0.1
 keyFrame.Parent = screenGui
-Instance.new("UICorner", keyFrame).CornerRadius = UDim.new(0, 22)
+Instance.new("UICorner", keyFrame).CornerRadius = UDim.new(0, 24)
 
 local keyTitle = Instance.new("TextLabel")
 keyTitle.Text = "qa0e System"
-keyTitle.Size = UDim2.new(1,0,0,60)
+keyTitle.Size = UDim2.new(1,0,0,70)
 keyTitle.BackgroundTransparency = 1
 keyTitle.TextColor3 = Color3.new(1,1,1)
 keyTitle.TextScaled = true
@@ -59,24 +59,24 @@ keyTitle.Parent = keyFrame
 
 local keyInput = Instance.new("TextBox")
 keyInput.PlaceholderText = "Enter 4-digit code"
-keyInput.Size = UDim2.new(0.85,0,0,55)
+keyInput.Size = UDim2.new(0.85,0,0,60)
 keyInput.Position = UDim2.new(0.075,0,0.35,0)
-keyInput.BackgroundColor3 = Color3.fromRGB(28,28,45)
+keyInput.BackgroundColor3 = Color3.fromRGB(25,25,40)
 keyInput.TextColor3 = Color3.new(1,1,1)
 keyInput.TextScaled = true
 keyInput.Parent = keyFrame
-Instance.new("UICorner", keyInput).CornerRadius = UDim.new(0,16)
+Instance.new("UICorner", keyInput).CornerRadius = UDim.new(0, 18)
 
 local unlockBtn = Instance.new("TextButton")
 unlockBtn.Text = "Unlock"
-unlockBtn.Size = UDim2.new(0.55,0,0,50)
-unlockBtn.Position = UDim2.new(0.225,0,0.68,0)
+unlockBtn.Size = UDim2.new(0.6,0,0,55)
+unlockBtn.Position = UDim2.new(0.2,0,0.68,0)
 unlockBtn.BackgroundColor3 = Color3.fromRGB(65, 195, 125)
 unlockBtn.TextColor3 = Color3.new(1,1,1)
 unlockBtn.TextScaled = true
 unlockBtn.Font = Enum.Font.GothamBold
 unlockBtn.Parent = keyFrame
-Instance.new("UICorner", unlockBtn).CornerRadius = UDim.new(0,16)
+Instance.new("UICorner", unlockBtn).CornerRadius = UDim.new(0, 18)
 
 unlockBtn.MouseButton1Click:Connect(function()
     playClick()
@@ -91,59 +91,64 @@ end)
 -- ==================== MAIN GLASS UI ====================
 function createMainUI()
     local mainFrame = Instance.new("Frame")
-    mainFrame.Size = UDim2.new(0, 780, 0, 560)
-    mainFrame.Position = UDim2.new(0.5, -390, 0.5, -280)
-    mainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 32)
-    mainFrame.BackgroundTransparency = 0.18
+    mainFrame.Size = UDim2.new(0, 820, 0, 620)
+    mainFrame.Position = UDim2.new(0.5, -410, 0.5, -310)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(16, 16, 32)
+    mainFrame.BackgroundTransparency = 0.25
     mainFrame.Active = true
     mainFrame.Draggable = true
     mainFrame.Parent = screenGui
-    Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 20)
+    Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 22)
 
-    -- Glass Top Bar
+    local stroke = Instance.new("UIStroke")
+    stroke.Thickness = 2
+    stroke.Color = Color3.fromRGB(80, 200, 255)
+    stroke.Transparency = 0.7
+    stroke.Parent = mainFrame
+
+    -- Top Bar
     local topBar = Instance.new("Frame")
-    topBar.Size = UDim2.new(1,0,0,78)
+    topBar.Size = UDim2.new(1,0,0,80)
     topBar.BackgroundColor3 = Color3.fromRGB(22, 165, 130)
-    topBar.BackgroundTransparency = 0.1
+    topBar.BackgroundTransparency = 0.15
     topBar.Parent = mainFrame
-    Instance.new("UICorner", topBar).CornerRadius = UDim.new(0, 20)
+    Instance.new("UICorner", topBar).CornerRadius = UDim.new(0, 22)
 
-    -- Avatar
     local avatar = Instance.new("ImageLabel")
-    avatar.Size = UDim2.new(0,58,0,58)
-    avatar.Position = UDim2.new(0,22,0.5,-29)
+    avatar.Size = UDim2.new(0, 64, 0, 64)
+    avatar.Position = UDim2.new(0, 25, 0.5, -32)
     avatar.BackgroundTransparency = 1
     avatar.Image = Players:GetUserThumbnailAsync(player.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size48x48)
     avatar.Parent = topBar
 
-    local usernameLabel = Instance.new("TextLabel")
-    usernameLabel.Text = "@" .. player.Name
-    usernameLabel.Size = UDim2.new(0.35,0,1,0)
-    usernameLabel.Position = UDim2.new(0,92,0,0)
-    usernameLabel.BackgroundTransparency = 1
-    usernameLabel.TextColor3 = Color3.new(1,1,1)
-    usernameLabel.TextScaled = true
-    usernameLabel.Font = Enum.Font.GothamSemibold
-    usernameLabel.TextXAlignment = Enum.TextXAlignment.Left
-    usernameLabel.Parent = topBar
+    local username = Instance.new("TextLabel")
+    username.Text = "@" .. player.Name
+    username.Size = UDim2.new(0.35,0,1,0)
+    username.Position = UDim2.new(0, 100, 0, 0)
+    username.BackgroundTransparency = 1
+    username.TextColor3 = Color3.new(1,1,1)
+    username.TextScaled = true
+    username.Font = Enum.Font.GothamSemibold
+    username.TextXAlignment = Enum.TextXAlignment.Left
+    username.Parent = topBar
 
-    local titleLabel = Instance.new("TextLabel")
-    titleLabel.Text = "qa0e System"
-    titleLabel.Size = UDim2.new(0.4,0,1,0)
-    titleLabel.Position = UDim2.new(0.5,0,0,0)
-    titleLabel.BackgroundTransparency = 1
-    titleLabel.TextColor3 = Color3.new(1,1,1)
-    titleLabel.TextScaled = true
-    titleLabel.Font = Enum.Font.GothamBlack
-    titleLabel.Parent = topBar
+    local title = Instance.new("TextLabel")
+    title.Text = "qa0e System"
+    title.Size = UDim2.new(0.4,0,1,0)
+    title.Position = UDim2.new(0.5,0,0,0)
+    title.BackgroundTransparency = 1
+    title.TextColor3 = Color3.new(1,1,1)
+    title.TextScaled = true
+    title.Font = Enum.Font.GothamBlack
+    title.Parent = topBar
 
     -- Close Button
     local closeBtn = Instance.new("TextButton")
     closeBtn.Text = "✕"
-    closeBtn.Size = UDim2.new(0,50,0,50)
-    closeBtn.Position = UDim2.new(1,-65,0.5,-25)
+    closeBtn.Size = UDim2.new(0,60,0,60)
+    closeBtn.Position = UDim2.new(1,-70,0.5,-30)
     closeBtn.BackgroundTransparency = 1
-    closeBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+    closeBtn.TextColor3 = Color3.fromRGB(255,80,80)
     closeBtn.TextScaled = true
     closeBtn.Parent = topBar
     closeBtn.MouseButton1Click:Connect(function()
@@ -151,173 +156,193 @@ function createMainUI()
         screenGui:Destroy()
     end)
 
-    -- Scrolling Content
-    local scrolling = Instance.new("ScrollingFrame")
-    scrolling.Size = UDim2.new(1, -40, 1, -100)
-    scrolling.Position = UDim2.new(0,20,0,88)
-    scrolling.BackgroundTransparency = 1
-    scrolling.ScrollBarThickness = 8
-    scrolling.Parent = mainFrame
+    -- Tabs
+    local tabs = {"Move", "Combat", "Visuals", "Hotkeys"}
+    local tabButtons = {}
+    local contentFrame = Instance.new("Frame")
+    contentFrame.Size = UDim2.new(1, -40, 1, -140)
+    contentFrame.Position = UDim2.new(0,20,0,100)
+    contentFrame.BackgroundTransparency = 1
+    contentFrame.Parent = mainFrame
 
-    local listLayout = Instance.new("UIListLayout")
-    listLayout.Padding = UDim.new(0,15)
-    listLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    listLayout.Parent = scrolling
+    local function switchTab(tabName)
+        contentFrame:ClearAllChildren()
+        -- Hier kommen die Inhalte der Tabs
+        if tabName == "Move" then
+            -- Move Tab
+            local function createButton(text, callback)
+                local btn = Instance.new("TextButton")
+                btn.Size = UDim2.new(1,0,0,65)
+                btn.BackgroundColor3 = Color3.fromRGB(45,45,70)
+                btn.Text = text
+                btn.TextColor3 = Color3.new(1,1,1)
+                btn.TextScaled = true
+                btn.Font = Enum.Font.GothamSemibold
+                btn.Parent = contentFrame
+                Instance.new("UICorner", btn).CornerRadius = UDim.new(0,18)
+                btn.MouseButton1Click:Connect(function()
+                    playClick()
+                    callback()
+                end)
+            end
 
-    local function createToggle(name, default, callback)
-        local toggle = Instance.new("TextButton")
-        toggle.Size = UDim2.new(1,0,0,68)
-        toggle.BackgroundColor3 = default and Color3.fromRGB(50,200,110) or Color3.fromRGB(200,65,65)
-        toggle.Text = name .. ": " .. (default and "ON" or "OFF")
-        toggle.TextColor3 = Color3.new(1,1,1)
-        toggle.TextScaled = true
-        toggle.Font = Enum.Font.GothamSemibold
-        toggle.Parent = scrolling
-        Instance.new("UICorner", toggle).CornerRadius = UDim.new(0,18)
-        
-        local state = default
-        toggle.MouseButton1Click:Connect(function()
-            playClick()
-            state = not state
-            toggle.Text = name .. ": " .. (state and "ON" or "OFF")
-            toggle.BackgroundColor3 = state and Color3.fromRGB(50,200,110) or Color3.fromRGB(200,65,65)
-            if callback then callback(state) end
-        end)
+            createButton("Infinity Jump: " .. (infinityJumpEnabled and "ON" or "OFF"), function()
+                infinityJumpEnabled = not infinityJumpEnabled
+            end)
+
+            -- Speed Hack
+            local speedLabel = Instance.new("TextLabel")
+            speedLabel.Text = "Speed Hack: " .. speedValue
+            speedLabel.Size = UDim2.new(1,0,0,65)
+            speedLabel.BackgroundColor3 = Color3.fromRGB(30, 130, 110)
+            speedLabel.TextColor3 = Color3.fromRGB(0, 255, 200)
+            speedLabel.TextScaled = true
+            speedLabel.Parent = contentFrame
+            Instance.new("UICorner", speedLabel).CornerRadius = UDim.new(0,18)
+
+            local speedBox = Instance.new("TextBox")
+            speedBox.Text = tostring(speedValue)
+            speedBox.Size = UDim2.new(1,0,0,55)
+            speedBox.BackgroundColor3 = Color3.fromRGB(35,35,55)
+            speedBox.TextColor3 = Color3.new(1,1,1)
+            speedBox.TextScaled = true
+            speedBox.Parent = contentFrame
+            Instance.new("UICorner", speedBox).CornerRadius = UDim.new(0,18)
+            speedBox.FocusLost:Connect(function()
+                playClick()
+                speedValue = tonumber(speedBox.Text) or 32
+                speedLabel.Text = "Speed Hack: " .. speedValue
+            end)
+
+            createButton("Enable Speed Hack", function()
+                speedHackEnabled = not speedHackEnabled
+                if player.Character and player.Character:FindFirstChild("Humanoid") then
+                    player.Character.Humanoid.WalkSpeed = speedHackEnabled and speedValue or 16
+                end
+            end)
+
+            createButton("Set Teleport Point", function()
+                if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                    savedTeleportPoint = player.Character.HumanoidRootPart.CFrame
+                    print("Teleport Point Saved!")
+                end
+            end)
+
+            createButton("Teleport to Point", function()
+                if savedTeleportPoint and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                    player.Character.HumanoidRootPart.CFrame = savedTeleportPoint
+                end
+            end)
+
+        elseif tabName == "Combat" then
+            -- Combat Tab
+            local function createToggle(name, enabled, callback)
+                -- ... (Toggle Funktion hier einbauen)
+            end
+            createToggle("Aimbot", aimbotEnabled, function(s) aimbotEnabled = s end)
+
+        elseif tabName == "Visuals" then
+            createToggle("ESP Highlight", espEnabled, function(s) espEnabled = s end)
+            createToggle("Snaplines + HP", snaplinesEnabled, function(s) snaplinesEnabled = s end)
+
+        elseif tabName == "Hotkeys" then
+            -- Volume + Keybinds
+            local volLabel = Instance.new("TextLabel")
+            volLabel.Text = "Volume: " .. math.floor(currentVolume * 100) .. "%"
+            volLabel.Size = UDim2.new(1,0,0,70)
+            volLabel.BackgroundColor3 = Color3.fromRGB(40,40,75)
+            volLabel.TextColor3 = Color3.fromRGB(180,220,255)
+            volLabel.TextScaled = true
+            volLabel.Parent = contentFrame
+            Instance.new("UICorner", volLabel).CornerRadius = UDim.new(0,18)
+
+            -- Volume Buttons
+            local down = Instance.new("TextButton")
+            down.Text = "Volume Down"
+            down.Size = UDim2.new(0.48,0,0,60)
+            down.Position = UDim2.new(0,0,0,80)
+            down.BackgroundColor3 = Color3.fromRGB(90,130,200)
+            down.Parent = contentFrame
+            Instance.new("UICorner", down).CornerRadius = UDim.new(0,16)
+            down.MouseButton1Click:Connect(function()
+                playClick()
+                updateVolume(currentVolume - 0.15)
+                volLabel.Text = "Volume: " .. math.floor(currentVolume * 100) .. "%"
+            end)
+
+            local up = Instance.new("TextButton")
+            up.Text = "Volume Up"
+            up.Size = UDim2.new(0.48,0,0,60)
+            up.Position = UDim2.new(0.52,0,0,80)
+            up.BackgroundColor3 = Color3.fromRGB(90,130,200)
+            up.Parent = contentFrame
+            Instance.new("UICorner", up).CornerRadius = UDim.new(0,16)
+            up.MouseButton1Click:Connect(function()
+                playClick()
+                updateVolume(currentVolume + 0.15)
+                volLabel.Text = "Volume: " .. math.floor(currentVolume * 100) .. "%"
+            end)
+
+            -- Save / Load
+            createButton("💾 Save Current Settings", function() print("Settings Saved!") end)
+            createButton("📂 Load Saved Settings", function() print("Settings Loaded!") end)
+        end
     end
 
-    -- Move Section
-    createToggle("Infinity Jump", false, function(s) infinityJumpEnabled = s end)
+    -- Tab Buttons erstellen
+    for i, tabName in ipairs(tabs) do
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(0.25, 0, 0, 55)
+        btn.Position = UDim2.new((i-1)*0.25, 0, 0, 80)
+        btn.BackgroundColor3 = Color3.fromRGB(30,30,55)
+        btn.Text = tabName
+        btn.TextColor3 = Color3.new(1,1,1)
+        btn.TextScaled = true
+        btn.Font = Enum.Font.GothamSemibold
+        btn.Parent = mainFrame
+        Instance.new("UICorner", btn).CornerRadius = UDim.new(0,16)
 
-    -- Speed Hack
-    local speedLabel = Instance.new("TextLabel")
-    speedLabel.Text = "Speed: " .. speedValue
-    speedLabel.Size = UDim2.new(1,0,0,68)
-    speedLabel.BackgroundColor3 = Color3.fromRGB(30,140,120)
-    speedLabel.TextColor3 = Color3.fromRGB(0,255,220)
-    speedLabel.TextScaled = true
-    speedLabel.Font = Enum.Font.GothamBold
-    speedLabel.Parent = scrolling
-    Instance.new("UICorner", speedLabel).CornerRadius = UDim.new(0,18)
+        btn.MouseButton1Click:Connect(function()
+            playClick()
+            switchTab(tabName)
+        end)
+        table.insert(tabButtons, btn)
+    end
 
-    local speedInput = Instance.new("TextBox")
-    speedInput.Text = "Set Speed"
-    speedInput.Size = UDim2.new(1,0,0,60)
-    speedInput.BackgroundColor3 = Color3.fromRGB(35,35,55)
-    speedInput.TextColor3 = Color3.new(1,1,1)
-    speedInput.TextScaled = true
-    speedInput.Parent = scrolling
-    Instance.new("UICorner", speedInput).CornerRadius = UDim.new(0,18)
-    speedInput.FocusLost:Connect(function()
-        playClick()
-        speedValue = tonumber(speedInput.Text) or 16
-        speedLabel.Text = "Speed: " .. speedValue
-        if speedHackEnabled and player.Character and player.Character:FindFirstChild("Humanoid") then
-            player.Character.Humanoid.WalkSpeed = speedValue
-        end
-    end)
-
-    createToggle("Speed Hack", false, function(s) 
-        speedHackEnabled = s
-        if player.Character and player.Character:FindFirstChild("Humanoid") then
-            player.Character.Humanoid.WalkSpeed = s and speedValue or 16
-        end
-    end)
-
-    createToggle("Save Teleport Point", false, function() 
-        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-            savedTeleportPoint = player.Character.HumanoidRootPart.CFrame
-        end
-    end)
-
-    createToggle("Teleport to Point", false, function()
-        if savedTeleportPoint and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-            player.Character.HumanoidRootPart.CFrame = savedTeleportPoint
-        end
-    end)
-
-    -- Combat
-    createToggle("Aimbot", false, function(s) aimbotEnabled = s end)
-
-    -- Visuals
-    createToggle("ESP Highlight", false, function(s) espEnabled = s end)
-    createToggle("Snaplines", false, function(s) snaplinesEnabled = s end)
-
-    -- Volume Controls
-    local volumeLabel = Instance.new("TextLabel")
-    volumeLabel.Text = "Volume: " .. math.floor(currentVolume * 100) .. "%"
-    volumeLabel.Size = UDim2.new(1,0,0,68)
-    volumeLabel.BackgroundColor3 = Color3.fromRGB(40,40,70)
-    volumeLabel.TextColor3 = Color3.fromRGB(180, 220, 255)
-    volumeLabel.TextScaled = true
-    volumeLabel.Font = Enum.Font.GothamBold
-    volumeLabel.Parent = scrolling
-    Instance.new("UICorner", volumeLabel).CornerRadius = UDim.new(0,18)
-
-    local volDown = Instance.new("TextButton")
-    volDown.Text = "Volume Down"
-    volDown.Size = UDim2.new(0.48,0,0,60)
-    volDown.Position = UDim2.new(0,0,0,0)
-    volDown.BackgroundColor3 = Color3.fromRGB(100, 140, 220)
-    volDown.TextColor3 = Color3.new(1,1,1)
-    volDown.TextScaled = true
-    volDown.Parent = scrolling
-    Instance.new("UICorner", volDown).CornerRadius = UDim.new(0,16)
-    volDown.MouseButton1Click:Connect(function()
-        playClick()
-        updateVolume(currentVolume - 0.1)
-        volumeLabel.Text = "Volume: " .. math.floor(currentVolume * 100) .. "%"
-    end)
-
-    local volUp = Instance.new("TextButton")
-    volUp.Text = "Volume Up"
-    volUp.Size = UDim2.new(0.48,0,0,60)
-    volUp.Position = UDim2.new(0.52,0,0,0)
-    volUp.BackgroundColor3 = Color3.fromRGB(100, 140, 220)
-    volUp.TextColor3 = Color3.new(1,1,1)
-    volUp.TextScaled = true
-    volUp.Parent = scrolling
-    Instance.new("UICorner", volUp).CornerRadius = UDim.new(0,16)
-    volUp.MouseButton1Click:Connect(function()
-        playClick()
-        updateVolume(currentVolume + 0.1)
-        volumeLabel.Text = "Volume: " .. math.floor(currentVolume * 100) .. "%"
-    end)
-
-    -- Save / Load
-    createToggle("Save Current Settings", false, function() print("Settings Saved!") end)
-    createToggle("Load Saved Settings", false, function() print("Settings Loaded!") end)
+    switchTab("Move") -- Start mit Move Tab
 
     -- ==================== FUNCTIONALITY ====================
     UserInputService.JumpRequest:Connect(function()
         if infinityJumpEnabled and player.Character and player.Character:FindFirstChild("Humanoid") then
-            player.Character.Humanoid:ChangeState("Jumping")
+            player.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
         end
     end)
 
     RunService.RenderStepped:Connect(function()
-        if not aimbotEnabled then return end
-        local closest = nil
-        local minDist = math.huge
-        for _, plr in ipairs(Players:GetPlayers()) do
-            if plr ~= player and plr.Character and plr.Character:FindFirstChild("Head") then
-                local dist = (plr.Character.Head.Position - camera.CFrame.Position).Magnitude
-                if dist < minDist then
-                    minDist = dist
-                    closest = plr.Character.Head
+        if aimbotEnabled then
+            -- Simple Aimbot (kann verbessert werden)
+            local closest = nil
+            local minDist = math.huge
+            for _, plr in ipairs(Players:GetPlayers()) do
+                if plr ~= player and plr.Character and plr.Character:FindFirstChild("Head") then
+                    local dist = (plr.Character.Head.Position - camera.CFrame.Position).Magnitude
+                    if dist < minDist then
+                        minDist = dist
+                        closest = plr.Character.Head
+                    end
                 end
             end
-        end
-        if closest then
-            camera.CFrame = CFrame.lookAt(camera.CFrame.Position, closest.Position)
+            if closest then
+                camera.CFrame = CFrame.lookAt(camera.CFrame.Position, closest.Position)
+            end
         end
     end)
 
-    UserInputService.InputBegan:Connect(function(input, gp)
-        if gp then return end
+    UserInputService.InputBegan:Connect(function(input)
         if input.KeyCode == Enum.KeyCode.Insert then
             mainFrame.Visible = not mainFrame.Visible
         end
     end)
 
-    print("qa0e System loaded successfully! Press INSERT to toggle menu.")
+    print("✅ qa0e System v1.8 loaded! Press INSERT to toggle.")
 end
