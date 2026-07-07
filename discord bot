@@ -1,0 +1,527 @@
+const {
+  Client,
+  GatewayIntentBits,
+  EmbedBuilder,
+  PermissionsBitField,
+  ActionRowBuilder,
+  StringSelectMenuBuilder,
+  ButtonBuilder,
+  ButtonStyle
+} = require("discord.js");
+
+const fs = require("fs");
+const config = require("./config.json");
+
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMembers
+  ]
+});
+
+// ================= GAME STATES =================
+const games = new Map();
+
+// ================= RANKS mit IDs =================
+const ranks = [
+  { name: "Trainee Mod", id: "1516136080070545539" },
+  { name: "Server Mod", id: "1514617279411650733" },
+  { name: "Head of Mod", id: "1519406555173490698" },
+  { name: "Admin", id: "1518174071786045521" },
+  { name: "Head Admin", id: "1519407237976817827" },
+  { name: "Server Manager", id: "1519407618458910831" },
+  { name: "Co-Owner", id: "1514609103723430009" }
+];
+
+const staffRoleId = "1514614203024146484"; // Server Staff
+
+// ================= ROLE HELPER =================
+function getRole(guild, identifier) {
+  if (!identifier) return null;
+  let role = guild.roles.cache.get(identifier);
+  if (role) return role;
+  return guild.roles.cache.find(r => r.name.toLowerCase() === identifier.toLowerCase());
+}
+
+// ================= LOG =================
+function log(guild, text) {
+  const channel = guild.channels.cache.find(c => c.name === config.modlogChannel);
+  if (!channel) return;
+
+  const embed = new EmbedBuilder()
+    .setColor("Red")
+    .setDescription(`ðŸ“Œ ${text}`)
+    .setFooter({ text: "made by qa0e" })
+    .setTimestamp();
+
+  channel.send({ embeds: [embed] });
+}
+
+// ================= READY =================
+client.once("ready", () => {
+  console.log("ðŸ¤– qa0e bot system online");
+});
+
+// ================= MESSAGE CREATE =================
+client.on("messageCreate", async (message) => {
+  if (!message.guild || message.author.bot) return;
+
+  const prefix = config.prefix;
+  if (!message.content.startsWith(prefix)) return;
+
+  const args = message.content.slice(prefix.length).trim().split(/ +/);
+  let cmd = args.shift().toLowerCase();
+
+  const member = message.mentions.members.first();
+  const OWNER_ID = "979320352054337546";
+  const isOwner = message.author.id === OWNER_ID;
+
+  if (cmd === "qa0e") {
+    if (!isOwner) return;
+    if (args.length === 0) return message.reply("âŒ Command fehlt.");
+    cmd = args.shift().toLowerCase();
+  }
+
+  // ================= HELP =================
+  if (cmd === "help") {
+    const embed = new EmbedBuilder()
+      .setColor("#00b0ff")
+      .setTitle("ðŸ“– qa0e bot system - Hilfe")
+      .setDescription(`WÃ¤hle unten eine Kategorie aus.\n\nðŸ“Œ Prefix: \`${config.prefix}\``)
+      .setFooter({ text: "made by qa0e" });
+
+    const menu = new StringSelectMenuBuilder()
+      .setCustomId("helpmenu")
+      .setPlaceholder("âž¡ Kategorie auswÃ¤hlen")
+      .addOptions([
+        { label: "ðŸ“¦ Sonstiges", value: "other", description: "NÃ¼tzliche Commands" },
+        { label: "ðŸŽ® Spiele", value: "games", description: "Fun & Mini-Games" },
+        { label: "ðŸ›¡ï¸ Moderation", value: "mod", description: "Moderation" },
+        { label: "ðŸ‘‘ Owner", value: "owner", description: "Owner Commands" }
+      ]);
+
+    const row = new ActionRowBuilder().addComponents(menu);
+    return message.reply({ embeds: [embed], components: [row] });
+  }
+
+  // ================= SETUP =================
+  if (cmd === "setup") {
+    if (!isOwner && !message.member.permissions.has(PermissionsBitField.Flags.Administrator))
+      return message.reply("âŒ Nur Admins kÃ¶nnen Setup nutzen");
+
+    for (const rank of ranks) {
+      if (!message.guild.roles.cache.get(rank.id)) {
+        await message.guild.roles.create({ name: rank.name, reason: "Bot Setup Command" });
+      }
+    }
+    if (!message.guild.roles.cache.get(staffRoleId)) {
+      await message.guild.roles.create({ name: "Server Staff", reason: "Bot Setup Command" });
+    }
+
+    return message.reply("âœ… Setup abgeschlossen!");
+  }
+
+  // ================= TEAM =================
+  if (cmd === "team") {
+    const embed = new EmbedBuilder()
+      .setColor("Green")
+      .setTitle("ðŸ‘¥ Team Ãœbersicht")
+      .setFooter({ text: "made by qa0e" });
+
+    let hasAnyTeam = false;
+
+    for (let i = ranks.length - 1; i >= 0; i--) {
+      const rank = ranks[i];
+      const role = message.guild.roles.cache.get(rank.id);
+
+      if (!role) {
+        embed.addFields({ 
+          name: `ðŸ”¹ ${rank.name}`, 
+          value: "âŒ Rolle nicht gefunden (ID falsch oder nicht vorhanden)" 
+        });
+        continue;
+      }
+
+      const memberList = role.members.size > 0 
+        ? role.members.map(m => `<@${m.id}>`).join("\n") 
+        : "Keine User";
+
+      embed.addFields({ 
+        name: `ðŸ”¹ ${rank.name} (${role.members.size})`, 
+        value: memberList 
+      });
+
+      if (role.members.size > 0) hasAnyTeam = true;
+    }
+
+    if (!hasAnyTeam) {
+      embed.setDescription("Es sind aktuell keine Teammitglieder vorhanden.");
+    }
+
+    return message.reply({ embeds: [embed] });
+  }
+
+  // ================= TEAMADD =================
+  if (cmd === "teamadd") {
+    if (!isOwner && !message.member.roles.cache.has(ranks[ranks.length-1].id))
+      return message.reply("âŒ Keine Berechtigung.");
+    if (!member) return message.reply("âŒ User fehlt.");
+
+    const trainee = message.guild.roles.cache.get(ranks[0].id);
+    const staff = message.guild.roles.cache.get(staffRoleId);
+    if (!trainee || !staff) return message.reply("âŒ Bitte zuerst ,setup ausfÃ¼hren.");
+
+    await member.roles.add([trainee.id, staff.id]);
+    log(message.guild, `ðŸŸ¢ TEAMADD | ${member.user.tag}`);
+    return message.reply(`âœ… ${member.user.tag} wurde dem Team hinzugefÃ¼gt.`);
+  }
+
+  // ================= TEAMKICK =================
+  if (cmd === "teamkick") {
+    if (!isOwner && !message.member.roles.cache.has(ranks[ranks.length-1].id))
+      return message.reply("âŒ Keine Berechtigung.");
+    if (!member) return message.reply("âŒ User fehlt.");
+
+    for (const rank of ranks) {
+      const role = message.guild.roles.cache.get(rank.id);
+      if (role) await member.roles.remove(role.id).catch(() => {});
+    }
+    const staff = message.guild.roles.cache.get(staffRoleId);
+    if (staff) await member.roles.remove(staff.id).catch(() => {});
+
+    log(message.guild, `ðŸ”´ TEAMKICK | ${member.user.tag}`);
+    return message.reply(`âœ… ${member.user.tag} wurde aus dem Team entfernt.`);
+  }
+
+  // ================= UPRANK =================
+  if (cmd === "uprank") {
+    if (!isOwner && !message.member.roles.cache.some(r => [ranks[ranks.length-2].id, ranks[ranks.length-1].id].includes(r.id)))
+      return message.reply("âŒ Keine Berechtigung.");
+
+    if (!member) return message.reply("âŒ User fehlt.");
+
+    let currentIndex = -1;
+    for (let i = 0; i < ranks.length; i++) {
+      if (member.roles.cache.has(ranks[i].id)) {
+        currentIndex = i;
+        break;
+      }
+    }
+
+    if (currentIndex === -1) return message.reply("âŒ Dieser User ist kein Teammitglied.");
+    if (currentIndex >= ranks.length - 1) return message.reply("âŒ HÃ¶chster Rang bereits erreicht.");
+
+    const nextRank = ranks[currentIndex + 1];
+    await member.roles.remove(ranks[currentIndex].id);
+    await member.roles.add(nextRank.id);
+
+    log(message.guild, `â¬† UPRANK | ${member.user.tag} â†’ ${nextRank.name}`);
+    return message.reply(`âœ… ${member.user.tag} ist jetzt **${nextRank.name}**.`);
+  }
+
+  // ================= DOWNRANK =================
+  if (cmd === "downrank") {
+    if (!isOwner && !message.member.roles.cache.some(r => [ranks[ranks.length-2].id, ranks[ranks.length-1].id].includes(r.id)))
+      return message.reply("âŒ Keine Berechtigung.");
+
+    if (!member) return message.reply("âŒ User fehlt.");
+
+    let currentIndex = -1;
+    for (let i = 0; i < ranks.length; i++) {
+      if (member.roles.cache.has(ranks[i].id)) {
+        currentIndex = i;
+        break;
+      }
+    }
+
+    if (currentIndex === -1) return message.reply("âŒ Dieser User ist kein Teammitglied.");
+    if (currentIndex <= 0) return message.reply("âŒ Niedrigster Rang bereits erreicht.");
+
+    const prevRank = ranks[currentIndex - 1];
+    await member.roles.remove(ranks[currentIndex].id);
+    await member.roles.add(prevRank.id);
+
+    log(message.guild, `â¬‡ DOWNRANK | ${member.user.tag} â†’ ${prevRank.name}`);
+    return message.reply(`âœ… ${member.user.tag} ist jetzt **${prevRank.name}**.`);
+  }
+
+  // ================= ROLE =================
+  if (cmd === "role") {
+    if (!isOwner && !message.member.roles.cache.some(r => [ranks[ranks.length-2].id, ranks[ranks.length-1].id].includes(r.id)))
+      return message.reply("âŒ Keine Berechtigung.");
+
+    if (!member) return message.reply("âŒ User fehlt.");
+
+    args.shift();
+    const roleName = args.join(" ");
+    const role = getRole(message.guild, roleName);
+    if (!role) return message.reply("âŒ Rolle nicht gefunden.");
+
+    if (member.roles.cache.has(role.id)) {
+      await member.roles.remove(role);
+      log(message.guild, `âž– ROLE | ${member.user.tag} - ${role.name}`);
+      return message.reply("âœ… Rolle entfernt.");
+    } else {
+      await member.roles.add(role);
+      log(message.guild, `âž• ROLE | ${member.user.tag} + ${role.name}`);
+      return message.reply("âœ… Rolle vergeben.");
+    }
+  }
+
+  // ================= MUTE =================
+  if (cmd === "mute") {
+    if (!isOwner && !message.member.roles.cache.some(r => ranks.some(rank => rank.id === r.id)))
+      return message.reply("âŒ Keine Berechtigung.");
+    if (!member) return message.reply("âŒ User fehlt.");
+
+    const time = args[1];
+    const ms = parseTime(time);
+    if (!ms) return message.reply("âŒ UngÃ¼ltige Zeit (z.B. 1h, 30m).");
+
+    await member.timeout(ms, "Muted via qa0e bot system");
+    log(message.guild, `ðŸ”‡ MUTE | ${member.user.tag}`);
+    return message.reply(`âœ… ${member.user.tag} wurde gemutet.`);
+  }
+
+  // ================= UNMUTE =================
+  if (cmd === "unmute") {
+    if (!isOwner && !message.member.roles.cache.some(r => ranks.some(rank => rank.id === r.id)))
+      return message.reply("âŒ Keine Berechtigung.");
+    if (!member) return message.reply("âŒ User fehlt.");
+
+    await member.timeout(null);
+    log(message.guild, `ðŸ”Š UNMUTE | ${member.user.tag}`);
+    return message.reply(`âœ… ${member.user.tag} wurde entmutet.`);
+  }
+
+  // ================= BAN =================
+  if (cmd === "ban") {
+    if (!isOwner && !message.member.roles.cache.some(r => [ranks[ranks.length-2].id, ranks[ranks.length-1].id].includes(r.id)))
+      return message.reply("âŒ Keine Berechtigung.");
+    if (!member) return message.reply("âŒ User fehlt.");
+    if (!member.bannable) return message.reply("âŒ Ich kann diesen User nicht bannen.");
+
+    const reason = args.slice(1).join(" ") || "Kein Grund angegeben";
+    await member.ban({ reason });
+    log(message.guild, `ðŸ”¨ BAN | ${member.user.tag} | Grund: ${reason}`);
+    return message.reply(`âœ… ${member.user.tag} wurde gebannt.`);
+  }
+
+  // ================= PURGE =================
+  if (cmd === "purge") {
+    if (!isOwner && !message.member.roles.cache.some(r => ranks.some(rank => rank.id === r.id)))
+      return message.reply("âŒ Keine Berechtigung.");
+
+    const amount = parseInt(args[0]);
+    if (!amount || amount < 1 || amount > 100)
+      return message.reply("âŒ Bitte eine Zahl zwischen 1-100 angeben.");
+
+    await message.channel.bulkDelete(amount, true);
+    const msg = await message.channel.send(`ðŸ§¹ ${amount} Nachrichten gelÃ¶scht.`);
+    setTimeout(() => msg.delete().catch(() => {}), 3000);
+    log(message.guild, `ðŸ§¹ PURGE | ${message.author.tag} | ${amount} Nachrichten`);
+  }
+
+  // ================= 8BALL =================
+  if (cmd === "8ball") {
+    const frage = args.join(" ");
+    if (!frage) return message.reply("âŒ Bitte stelle eine Frage.");
+
+    const antworten = ["âœ… Ja.", "âŒ Nein.", "ðŸ¤” Vielleicht.", "ðŸ”¥ Auf jeden Fall.", "ðŸ’¯ NatÃ¼rlich.", "ðŸ˜… Eher nicht.", "ðŸ‘€ Ich glaube schon.", "ðŸ™ƒ Frag spÃ¤ter nochmal.", "âœ¨ Sieht gut aus.", "ðŸš« Niemals."];
+    const antwort = antworten[Math.floor(Math.random() * antworten.length)];
+
+    const embed = new EmbedBuilder()
+      .setColor("Blue")
+      .setTitle("ðŸŽ± qa0e bot system 8Ball")
+      .addFields({ name: "â“ Frage", value: frage }, { name: "ðŸŽ² Antwort", value: antwort })
+      .setFooter({ text: "made by qa0e" });
+
+    return message.reply({ embeds: [embed] });
+  }
+
+  // ================= AVATAR =================
+  if (cmd === "av") {
+    const user = message.mentions.users.first() || message.author;
+    const embed = new EmbedBuilder()
+      .setColor("Blue")
+      .setTitle(`ðŸ–¼ï¸ Avatar von ${user.username}`)
+      .setImage(user.displayAvatarURL({ size: 4096, dynamic: true }))
+      .setFooter({ text: "made by qa0e" });
+    return message.reply({ embeds: [embed] });
+  }
+
+  // ================= USERINFO =================
+  if (cmd === "userinfo") {
+    const target = message.mentions.members.first() || message.member;
+    const embed = new EmbedBuilder()
+      .setColor("Blue")
+      .setTitle(`ðŸ‘¤ ${target.user.username}`)
+      .setThumbnail(target.user.displayAvatarURL({ dynamic: true }))
+      .addFields(
+        { name: "ðŸ†” Benutzer", value: target.user.tag, inline: true },
+        { name: "ðŸ“† Discord erstellt", value: `<t:${Math.floor(target.user.createdTimestamp / 1000)}:F>`, inline: true },
+        { name: "ðŸ“… Server beigetreten", value: `<t:${Math.floor(target.joinedTimestamp / 1000)}:F>`, inline: true }
+      )
+      .setFooter({ text: "made by qa0e" });
+    return message.reply({ embeds: [embed] });
+  }
+
+  // ================= SHIP =================
+  if (cmd === "ship") {
+    const users = message.mentions.users;
+    if (users.size < 2) return message.reply("âŒ Nutzung: `,ship @user @user`");
+
+    const user1 = users.at(0);
+    const user2 = users.at(1);
+    const percent = Math.floor(Math.random() * 101);
+
+    let text = "";
+    if (percent <= 10) text = "ðŸ’” Das wird wohl nichts...";
+    else if (percent <= 30) text = "ðŸ˜… Eher nicht...";
+    else if (percent <= 50) text = "ðŸ™‚ KÃ¶nnte klappen.";
+    else if (percent <= 70) text = "ðŸ˜Š Gar nicht schlecht!";
+    else if (percent <= 90) text = "â¤ï¸ Ihr wÃ¼rdet gut zusammenpassen!";
+    else text = "ðŸ’ Perfektes Match!";
+
+    const bar = "ðŸŸ¥".repeat(Math.floor((100 - percent) / 10)) + "ðŸŸ©".repeat(Math.floor(percent / 10));
+
+    const embed = new EmbedBuilder()
+      .setColor("Pink")
+      .setTitle("ðŸ’˜ qa0e bot system Ship")
+      .setDescription(`ðŸ‘¤ **${user1.username}**\nâ¤ï¸\nðŸ‘¤ **${user2.username}**\n\n## ðŸ’– ${percent}%\n${bar}\n${text}`)
+      .setFooter({ text: "made by qa0e" });
+
+    return message.reply({ embeds: [embed] });
+  }
+
+  // ================= TICTACTOE =================
+  if (cmd === "tictactoe") {
+    if (!member) return message.reply("âŒ Nutzung: `,tictactoe @user`");
+    if (member.id === message.author.id) return message.reply("âŒ Du kannst nicht gegen dich selbst spielen!");
+
+    const inviteEmbed = new EmbedBuilder()
+      .setColor("Blue")
+      .setTitle("ðŸŽ® Tic Tac Toe Einladung")
+      .setDescription(`${message.author} hat dich zu einem Tic Tac Toe Spiel herausgefordert!\n\n**MÃ¶chtest du annehmen?**`);
+
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId(`tictactoe_accept_${message.author.id}_${member.id}`).setLabel("Annehmen").setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId(`tictactoe_decline_${message.author.id}_${member.id}`).setLabel("Ablehnen").setStyle(ButtonStyle.Danger)
+    );
+
+    return message.reply({ embeds: [inviteEmbed], components: [row] });
+  }
+});
+
+// ================= INTERACTIONS =================
+client.on("interactionCreate", async interaction => {
+  if (interaction.isStringSelectMenu() && interaction.customId === "helpmenu") {
+    const embed = new EmbedBuilder().setColor("Blue").setFooter({ text: "made by qa0e" });
+
+    if (interaction.values[0] === "other") embed.setTitle("ðŸ“¦ Sonstiges").setDescription("`,av`\n`,userinfo`\n`,8ball <Frage>`\n`,team`");
+    if (interaction.values[0] === "games") embed.setTitle("ðŸŽ® Spiele").setDescription("`,ship @user @user`\n`,tictactoe @user`");
+    if (interaction.values[0] === "mod") embed.setTitle("ðŸ›¡ï¸ Moderation").setDescription("`,mute @user <zeit>`\n`,unmute @user`\n`,ban @user`\n`,purge <zahl>`\n`,role @user <rolle>`");
+    if (interaction.values[0] === "owner") embed.setTitle("ðŸ‘‘ Owner").setDescription("`,setup`\n`,prefixset <prefix>`\n`,teamadd @user`\n`,teamkick @user`\n`,uprank @user`\n`,downrank @user`");
+
+    await interaction.update({ embeds: [embed], components: interaction.message.components });
+    return;
+  }
+
+  if (!interaction.isButton()) return;
+  await interaction.deferUpdate().catch(() => {});
+
+  const customId = interaction.customId;
+
+  if (customId.startsWith("tictactoe_accept") || customId.startsWith("tictactoe_decline")) {
+    const [action, p1, p2] = customId.split("_");
+    if (action === "tictactoe_accept") {
+      if (interaction.user.id !== p2) return;
+      const gameId = `${p1}_${p2}`;
+      games.set(gameId, { board: Array(9).fill(null), currentPlayer: p1, players: { [p1]: "X", [p2]: "O" } });
+      await interaction.editReply({ content: `ðŸŽ® Spiel gestartet! **X** beginnt.`, embeds: [], components: [] });
+      await sendGameBoard(interaction.channel, gameId);
+    } else {
+      if (interaction.user.id !== p2) return;
+      await interaction.editReply({ content: "âŒ Spiel abgelehnt.", embeds: [], components: [] });
+    }
+  }
+
+  if (customId.startsWith("ttt_")) {
+    const [, gameId, posStr] = customId.split("_");
+    const pos = parseInt(posStr);
+    const game = games.get(gameId);
+    if (!game || game.currentPlayer !== interaction.user.id || game.board[pos] !== null) return;
+
+    const playerSymbol = game.players[interaction.user.id];
+    game.board[pos] = playerSymbol;
+
+    const winner = checkWinner(game.board);
+    if (winner) {
+      await interaction.editReply({ content: `ðŸŽ‰ ${interaction.user} hat gewonnen! (${playerSymbol})`, embeds: [], components: [] });
+      games.delete(gameId);
+      return;
+    }
+    if (!game.board.includes(null)) {
+      await interaction.editReply({ content: "ðŸ¤ Unentschieden!", embeds: [], components: [] });
+      games.delete(gameId);
+      return;
+    }
+
+    game.currentPlayer = Object.keys(game.players).find(id => id !== interaction.user.id);
+    await sendGameBoard(interaction.channel, gameId);
+  }
+});
+
+function checkWinner(board) {
+  const wins = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  for (let [a,b,c] of wins) {
+    if (board[a] && board[a] === board[b] && board[a] === board[c]) return board[a];
+  }
+  return null;
+}
+
+async function sendGameBoard(channel, gameId) {
+  const game = games.get(gameId);
+  if (!game) return;
+
+  const emojis = { "X": "âŒ", "O": "â­•", null: "â¬œ" };
+  const rows = [];
+
+  for (let i = 0; i < 9; i += 3) {
+    const row = new ActionRowBuilder();
+    for (let j = 0; j < 3; j++) {
+      const pos = i + j;
+      row.addComponents(
+        new ButtonBuilder()
+          .setCustomId(`ttt_${gameId}_${pos}`)
+          .setStyle(ButtonStyle.Secondary)
+          .setEmoji(emojis[game.board[pos]])
+          .setDisabled(!!game.board[pos])
+      );
+    }
+    rows.push(row);
+  }
+
+  const current = await channel.guild.members.fetch(game.currentPlayer);
+  const embed = new EmbedBuilder()
+    .setColor("Blue")
+    .setTitle("ðŸŽ® Tic Tac Toe")
+    .setDescription(`**Dran:** ${current} (${game.players[game.currentPlayer]})`);
+
+  await channel.send({ embeds: [embed], components: rows });
+}
+
+function parseTime(str) {
+  const match = str?.match(/(\d+)(s|m|h|d)/i);
+  if (!match) return 0;
+  const val = parseInt(match[1]);
+  const unit = match[2].toLowerCase();
+  if (unit === "s") return val * 1000;
+  if (unit === "m") return val * 60000;
+  if (unit === "h") return val * 3600000;
+  if (unit === "d") return val * 86400000;
+  return 0;
+}
+
